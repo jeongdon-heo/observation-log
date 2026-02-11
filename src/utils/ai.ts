@@ -35,6 +35,27 @@ async function urlToGenerativePart(imageUrl: string): Promise<Part | null> {
   }
 }
 
+async function callWithRetry(
+  fn: () => Promise<string>,
+  maxRetries: number = 3
+): Promise<string> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err: unknown) {
+      const is429 =
+        err instanceof Error && err.message.includes("429");
+      if (is429 && attempt < maxRetries - 1) {
+        const delay = (attempt + 1) * 3000;
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("재시도 횟수 초과");
+}
+
 /**
  * 학생의 관찰 일지(글 + 사진)를 분석하여 AI 칭찬 댓글을 생성합니다.
  * 서버사이드(API Route)에서만 호출해야 합니다.
@@ -48,7 +69,7 @@ export async function generateAIComment(params: {
   const { authorName, missionTitle, content, photoUrls } = params;
 
   const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-2.0-flash",
     systemInstruction: SYSTEM_INSTRUCTION,
   });
 
@@ -71,6 +92,8 @@ export async function generateAIComment(params: {
     ...imageParts,
   ];
 
-  const result = await model.generateContent(parts);
-  return result.response.text();
+  return callWithRetry(async () => {
+    const result = await model.generateContent(parts);
+    return result.response.text();
+  });
 }

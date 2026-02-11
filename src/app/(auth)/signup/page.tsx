@@ -23,8 +23,10 @@ export default function SignUpPage() {
     try {
       await signUp(email, password, displayName, role);
       router.push(role === "teacher" ? "/teacher" : "/student");
-    } catch {
-      setError("회원가입에 실패했습니다. 다시 시도해주세요.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("회원가입 에러:", err);
+      setError(`회원가입 실패: ${message}`);
     } finally {
       setLoading(false);
     }

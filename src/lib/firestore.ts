@@ -9,7 +9,7 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy,
+
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
@@ -99,11 +99,10 @@ export async function getMission(missionId: string): Promise<Mission | null> {
 export async function getMissionsByClass(classId: string): Promise<Mission[]> {
   const q = query(
     collection(db, "missions"),
-    where("classId", "==", classId),
-    orderBy("createdAt", "desc")
+    where("classId", "==", classId)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((s) => {
+  const missions = snap.docs.map((s) => {
     const d = s.data() as DBMission;
     return {
       ...d,
@@ -114,6 +113,7 @@ export async function getMissionsByClass(classId: string): Promise<Mission[]> {
       updatedAt: toDate(d.updatedAt),
     };
   });
+  return missions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export async function updateMission(missionId: string, data: Partial<DBMission>) {
@@ -156,11 +156,10 @@ export async function getPost(postId: string): Promise<Post | null> {
 export async function getPostsByMission(missionId: string): Promise<Post[]> {
   const q = query(
     collection(db, "posts"),
-    where("missionId", "==", missionId),
-    orderBy("createdAt", "desc")
+    where("missionId", "==", missionId)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((s) => {
+  const posts = snap.docs.map((s) => {
     const d = s.data() as DBPost;
     return {
       ...d,
@@ -170,17 +169,17 @@ export async function getPostsByMission(missionId: string): Promise<Post[]> {
       updatedAt: toDate(d.updatedAt),
     };
   });
+  return posts.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export async function getPostsByClass(classId: string): Promise<Post[]> {
   const q = query(
     collection(db, "posts"),
     where("classId", "==", classId),
-    where("isPublic", "==", true),
-    orderBy("createdAt", "desc")
+    where("isPublic", "==", true)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((s) => {
+  const posts = snap.docs.map((s) => {
     const d = s.data() as DBPost;
     return {
       ...d,
@@ -190,16 +189,16 @@ export async function getPostsByClass(classId: string): Promise<Post[]> {
       updatedAt: toDate(d.updatedAt),
     };
   });
+  return posts.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export async function getPostsByAuthor(authorId: string): Promise<Post[]> {
   const q = query(
     collection(db, "posts"),
-    where("authorId", "==", authorId),
-    orderBy("createdAt", "desc")
+    where("authorId", "==", authorId)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((s) => {
+  const posts = snap.docs.map((s) => {
     const d = s.data() as DBPost;
     return {
       ...d,
@@ -209,6 +208,7 @@ export async function getPostsByAuthor(authorId: string): Promise<Post[]> {
       updatedAt: toDate(d.updatedAt),
     };
   });
+  return posts.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export async function deletePost(postId: string) {
@@ -230,11 +230,10 @@ export async function createComment(
 export async function getCommentsByPost(postId: string): Promise<Comment[]> {
   const q = query(
     collection(db, "comments"),
-    where("postId", "==", postId),
-    orderBy("createdAt", "asc")
+    where("postId", "==", postId)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((s) => {
+  const comments = snap.docs.map((s) => {
     const d = s.data() as DBComment;
     return {
       ...d,
@@ -242,4 +241,5 @@ export async function getCommentsByPost(postId: string): Promise<Comment[]> {
       createdAt: toDate(d.createdAt),
     };
   });
+  return comments.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 }

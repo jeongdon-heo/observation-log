@@ -1,22 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Timestamp } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { createMission, getMissionsByClass } from "@/lib/firestore";
-import { uploadImage } from "@/lib/storage";
-import { MissionCard, MissionForm } from "@/components/observation";
-import { Button, Modal, EmptyState, Spinner } from "@/components/ui";
+import { MissionCard } from "@/components/observation";
+import { LAYOUT_OPTIONS } from "@/types";
 import type { Mission, LayoutType } from "@/types";
 
 export default function MissionsPage() {
   const { user } = useAuth();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const fetchMissions = async () => {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [layoutType, setLayoutType] = useState<LayoutType>("wall");
+  const [weekLabel, setWeekLabel] = useState("");
+  const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [endDate, setEndDate] = useState("");
+
+  const fetchMissions = useCallback(async () => {
     if (!user?.classId) {
       setLoading(false);
       return;
@@ -29,90 +36,169 @@ export default function MissionsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.classId]);
 
   useEffect(() => {
     fetchMissions();
-  }, [user?.classId]);
+  }, [fetchMissions]);
 
-  const handleCreate = async (data: {
-    title: string;
-    description: string;
-    layoutType: LayoutType;
-    weekLabel: string;
-    startDate: string;
-    endDate: string;
-    exampleImage?: File;
-  }) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!user) return;
-    setSubmitting(true);
-    try {
-      let exampleImageUrl: string | null = null;
-      if (data.exampleImage) {
-        exampleImageUrl = await uploadImage(data.exampleImage, "missions");
-      }
 
+    setSubmitting(true);
+    setError("");
+    setSuccess("");
+
+    try {
       await createMission({
         classId: user.classId,
         teacherId: user.uid,
-        title: data.title,
-        description: data.description,
-        exampleImageUrl,
-        layoutType: data.layoutType,
+        title,
+        description,
+        exampleImageUrl: null,
+        layoutType,
         isActive: true,
-        weekLabel: data.weekLabel,
-        startDate: Timestamp.fromDate(new Date(data.startDate)),
-        endDate: Timestamp.fromDate(new Date(data.endDate)),
+        weekLabel,
+        startDate: Timestamp.fromDate(new Date(startDate)),
+        endDate: Timestamp.fromDate(new Date(endDate)),
       });
-      setShowModal(false);
+
+      setTitle("");
+      setDescription("");
+      setWeekLabel("");
+      setEndDate("");
+      setSuccess("미션이 생성되었습니다!");
       await fetchMissions();
-    } catch (err) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
       console.error("미션 생성 실패:", err);
+      setError(`미션 생성 실패: ${message}`);
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-20">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">미션 관리</h1>
-        <Button onClick={() => setShowModal(true)}>+ 새 미션 만들기</Button>
+      <h1 className="text-2xl font-bold">미션 관리</h1>
+
+      {/* 미션 생성 폼 - 항상 표시 */}
+      <div className="bg-white rounded-xl border p-6">
+        <h2 className="text-lg font-bold mb-4">새 미션 만들기</h2>
+
+        {error && <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>}
+        {success && <p className="text-green-600 text-sm bg-green-50 p-3 rounded-lg mb-4">{success}</p>}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">미션 제목</label>
+            <input
+              id="title"
+              name="title"
+              type="text"
+              placeholder="예: 봄의 식물 관찰"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">설명</label>
+            <textarea
+              id="description"
+              name="description"
+              placeholder="학생들에게 안내할 내용을 적어주세요"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="weekLabel" className="block text-sm font-medium text-gray-700 mb-1">주차 라벨</label>
+            <input
+              id="weekLabel"
+              name="weekLabel"
+              type="text"
+              placeholder="예: 1주차, 4월 2주"
+              value={weekLabel}
+              onChange={(e) => setWeekLabel(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">보드 레이아웃</label>
+            <select
+              name="layoutType"
+              value={layoutType}
+              onChange={(e) => setLayoutType(e.target.value as LayoutType)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {LAYOUT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label} - {opt.description}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">시작일</label>
+              <input
+                id="startDate"
+                name="startDate"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                required
+                className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">마감일</label>
+              <input
+                id="endDate"
+                name="endDate"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                required
+                className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600 transition disabled:opacity-50"
+          >
+            {submitting ? "생성 중..." : "미션 만들기"}
+          </button>
+        </form>
       </div>
 
-      {missions.length === 0 ? (
-        <EmptyState
-          icon="📋"
-          title="아직 만든 미션이 없습니다"
-          description="새 미션을 만들어 학생들의 관찰 활동을 시작해보세요!"
-        >
-          <Button onClick={() => setShowModal(true)} size="sm">
-            첫 미션 만들기
-          </Button>
-        </EmptyState>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {missions.map((mission) => (
-            <MissionCard key={mission.id} mission={mission} role="teacher" />
-          ))}
+      {/* 미션 목록 */}
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-blue-500 border-t-transparent" />
         </div>
-      )}
-
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="새 미션 만들기">
-        <MissionForm
-          onSubmit={handleCreate}
-          loading={submitting}
-          onCancel={() => setShowModal(false)}
-        />
-      </Modal>
+      ) : missions.length > 0 ? (
+        <div>
+          <h2 className="text-lg font-semibold mb-3">미션 목록</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {missions.map((mission) => (
+              <MissionCard key={mission.id} mission={mission} role="teacher" />
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
