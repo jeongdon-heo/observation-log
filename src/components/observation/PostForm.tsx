@@ -24,10 +24,11 @@ interface PostFormInitialData {
 interface PostFormProps {
   onSubmit: (data: PostFormData) => Promise<void>;
   loading?: boolean;
+  loadingMessage?: string;
   initialData?: PostFormInitialData;
 }
 
-export default function PostForm({ onSubmit, loading = false, initialData }: PostFormProps) {
+export default function PostForm({ onSubmit, loading = false, loadingMessage, initialData }: PostFormProps) {
   const isEdit = !!initialData;
   const [content, setContent] = useState(initialData?.content ?? "");
   const [files, setFiles] = useState<File[]>([]);
@@ -164,7 +165,7 @@ export default function PostForm({ onSubmit, loading = false, initialData }: Pos
       </div>
 
       <Button type="submit" loading={loading} size="lg" className="w-full bg-green-500 hover:bg-green-600">
-        {isEdit ? "수정 완료" : "관찰 일지 올리기"}
+        {loading && loadingMessage ? loadingMessage : isEdit ? "수정 완료" : "관찰 일지 올리기"}
       </Button>
     </form>
   );

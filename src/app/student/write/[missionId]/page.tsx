@@ -18,6 +18,7 @@ export default function WritePostPage() {
 
   const [mission, setMission] = useState<Mission | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
 
   useEffect(() => {
     getMission(missionId).then(setMission);
@@ -34,8 +35,10 @@ export default function WritePostPage() {
 
     setLoading(true);
     try {
+      setLoadingMessage("사진 업로드 중...");
       const photoUrls = data.files.length > 0 ? await uploadMultipleImages(data.files) : [];
 
+      setLoadingMessage("관찰 일지 저장 중...");
       const postId = await createPost({
         authorId: user.uid,
         authorName: user.name,
@@ -48,24 +51,30 @@ export default function WritePostPage() {
         observedAt: Timestamp.fromDate(new Date(data.observedAt)),
       });
 
-      // AI 칭찬 댓글 비동기 요청 (글 + 사진 분석)
-      fetch("/api/ai-comment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          postId,
-          authorName: user.name,
-          missionTitle: mission?.title || missionId,
-          content: data.content,
-          photoUrls,
-        }),
-      });
+      // AI 칭찬 댓글 생성 (완료될 때까지 대기)
+      setLoadingMessage("AI 선생님이 댓글을 달고 있어요...");
+      try {
+        await fetch("/api/ai-comment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            postId,
+            authorName: user.name,
+            missionTitle: mission?.title || missionId,
+            content: data.content,
+            photoUrls,
+          }),
+        });
+      } catch (err) {
+        console.error("AI 댓글 생성 실패 (일지는 저장됨):", err);
+      }
 
       router.push("/student");
     } catch (err) {
       console.error("관찰 일지 저장 실패:", err);
     } finally {
       setLoading(false);
+      setLoadingMessage("");
     }
   };
 
@@ -83,7 +92,7 @@ export default function WritePostPage() {
         )}
       </div>
 
-      <PostForm onSubmit={handleSubmit} loading={loading} />
+      <PostForm onSubmit={handleSubmit} loading={loading} loadingMessage={loadingMessage} />
     </div>
   );
 }
