@@ -18,6 +18,7 @@ export interface DBUser {
   profileImageUrl: string | null; // 프로필 사진 URL
   classId: string;               // 소속 학급 ID
   email: string;
+  managedPassword?: string;      // 교사가 생성한 계정의 비밀번호 (교사 확인/수정용)
   createdAt: Timestamp;
 }
 

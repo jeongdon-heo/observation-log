@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { getMissionsByClass } from "@/lib/firestore";
+import { getMissionsByClass, getStudentsByClass } from "@/lib/firestore";
 import { Card, Spinner } from "@/components/ui";
-import type { Mission } from "@/types";
+import type { Mission, User } from "@/types";
 
 export default function TeacherDashboard() {
   const { user } = useAuth();
   const [missions, setMissions] = useState<Mission[]>([]);
+  const [students, setStudents] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,8 +20,12 @@ export default function TeacherDashboard() {
         return;
       }
       try {
-        const data = await getMissionsByClass(user.classId);
-        setMissions(data);
+        const [missionData, studentData] = await Promise.all([
+          getMissionsByClass(user.classId),
+          getStudentsByClass(user.classId),
+        ]);
+        setMissions(missionData);
+        setStudents(studentData);
       } catch (err) {
         console.error(err);
       } finally {
@@ -44,7 +49,7 @@ export default function TeacherDashboard() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">{user?.name} 선생님의 대시보드</h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card className="p-5 text-center">
           <p className="text-3xl font-bold text-blue-600">{missions.length}</p>
           <p className="text-sm text-gray-500 mt-1">전체 미션</p>
@@ -53,6 +58,12 @@ export default function TeacherDashboard() {
           <p className="text-3xl font-bold text-green-600">{activeMissions.length}</p>
           <p className="text-sm text-gray-500 mt-1">진행중 미션</p>
         </Card>
+        <Link href="/teacher/students">
+          <Card hover className="p-5 text-center h-full">
+            <p className="text-3xl font-bold text-orange-500">{students.length}</p>
+            <p className="text-sm text-gray-500 mt-1">학생 수</p>
+          </Card>
+        </Link>
         <Card className="p-5 text-center">
           <p className="text-lg font-mono font-bold text-purple-600 tracking-wider">
             {user?.classId?.slice(0, 6).toUpperCase() || "—"}
@@ -61,12 +72,19 @@ export default function TeacherDashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Link href="/teacher/missions">
-          <Card hover className="p-6">
+          <Card hover className="p-6 h-full">
             <div className="text-2xl mb-2">📋</div>
             <h2 className="text-lg font-semibold mb-1">미션 관리</h2>
             <p className="text-gray-500 text-sm">주간 관찰 미션을 만들고, 학생들의 일지를 보드로 확인합니다</p>
+          </Card>
+        </Link>
+        <Link href="/teacher/students">
+          <Card hover className="p-6 h-full">
+            <div className="text-2xl mb-2">👩‍👧‍👦</div>
+            <h2 className="text-lg font-semibold mb-1">학생 관리</h2>
+            <p className="text-gray-500 text-sm">학생 명단을 확인하고, 회원가입이 어려운 학생의 계정을 만들어줍니다</p>
           </Card>
         </Link>
         <Card className="p-6">

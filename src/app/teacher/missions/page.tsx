@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Timestamp } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
-import { createMission, getMissionsByClass } from "@/lib/firestore";
+import { createMission, getMissionsByClass, deleteMission } from "@/lib/firestore";
 import { MissionCard } from "@/components/observation";
 import { LAYOUT_OPTIONS } from "@/types";
 import type { Mission, LayoutType } from "@/types";
@@ -194,7 +194,19 @@ export default function MissionsPage() {
           <h2 className="text-lg font-semibold mb-3">미션 목록</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {missions.map((mission) => (
-              <MissionCard key={mission.id} mission={mission} role="teacher" />
+              <MissionCard
+                key={mission.id}
+                mission={mission}
+                role="teacher"
+                onDelete={async (id) => {
+                  try {
+                    await deleteMission(id);
+                    setMissions((prev) => prev.filter((m) => m.id !== id));
+                  } catch (err) {
+                    console.error("미션 삭제 실패:", err);
+                  }
+                }}
+              />
             ))}
           </div>
         </div>

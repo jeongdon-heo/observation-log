@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
+import Link from "next/link";
 import type { Post, Comment } from "@/types";
 import { WEATHER_OPTIONS } from "@/types";
 import { getCommentsByPost } from "@/lib/firestore";
@@ -11,9 +12,10 @@ import CommentBubble from "./CommentBubble";
 interface PostCardProps {
   post: Post;
   showAuthor?: boolean;
+  editable?: boolean;
 }
 
-export default function PostCard({ post, showAuthor = true }: PostCardProps) {
+export default function PostCard({ post, showAuthor = true, editable = false }: PostCardProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [imageIndex, setImageIndex] = useState(0);
 
@@ -85,6 +87,14 @@ export default function PostCard({ post, showAuthor = true }: PostCardProps) {
           <span className="text-xs text-gray-300 ml-auto">
             {post.createdAt ? format(post.createdAt, "a h:mm", { locale: ko }) : ""}
           </span>
+          {editable && (
+            <Link
+              href={`/student/edit/${post.id}`}
+              className="text-xs text-gray-400 hover:text-green-600 transition ml-1"
+            >
+              수정
+            </Link>
+          )}
         </div>
       </div>
 

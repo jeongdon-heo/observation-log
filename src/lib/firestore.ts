@@ -69,6 +69,20 @@ export async function joinClass(uid: string, classId: string) {
   await updateDoc(doc(db, "users", uid), { classId });
 }
 
+export async function getStudentsByClass(classId: string): Promise<User[]> {
+  const q = query(
+    collection(db, "users"),
+    where("classId", "==", classId),
+    where("role", "==", "student")
+  );
+  const snap = await getDocs(q);
+  const students = snap.docs.map((s) => {
+    const d = s.data() as DBUser;
+    return { ...d, createdAt: toDate(d.createdAt) };
+  });
+  return students.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+}
+
 // ==================== Missions ====================
 
 export async function createMission(
@@ -192,6 +206,25 @@ export async function getPostsByClass(classId: string): Promise<Post[]> {
   return posts.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
+export async function getAllPostsByClass(classId: string): Promise<Post[]> {
+  const q = query(
+    collection(db, "posts"),
+    where("classId", "==", classId)
+  );
+  const snap = await getDocs(q);
+  const posts = snap.docs.map((s) => {
+    const d = s.data() as DBPost;
+    return {
+      ...d,
+      id: s.id,
+      observedAt: toDate(d.observedAt),
+      createdAt: toDate(d.createdAt),
+      updatedAt: toDate(d.updatedAt),
+    };
+  });
+  return posts.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+}
+
 export async function getPostsByAuthor(authorId: string): Promise<Post[]> {
   const q = query(
     collection(db, "posts"),
@@ -209,6 +242,13 @@ export async function getPostsByAuthor(authorId: string): Promise<Post[]> {
     };
   });
   return posts.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+}
+
+export async function updatePost(postId: string, data: Partial<DBPost>) {
+  await updateDoc(doc(db, "posts", postId), {
+    ...data,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function deletePost(postId: string) {

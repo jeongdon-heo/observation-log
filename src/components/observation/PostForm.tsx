@@ -13,30 +13,43 @@ interface PostFormData {
   observedAt: string; // yyyy-MM-dd
 }
 
+interface PostFormInitialData {
+  content: string;
+  weather: WeatherType;
+  isPublic: boolean;
+  observedAt: string;
+  photoUrls: string[];
+}
+
 interface PostFormProps {
   onSubmit: (data: PostFormData) => Promise<void>;
   loading?: boolean;
+  initialData?: PostFormInitialData;
 }
 
-export default function PostForm({ onSubmit, loading = false }: PostFormProps) {
-  const [content, setContent] = useState("");
+export default function PostForm({ onSubmit, loading = false, initialData }: PostFormProps) {
+  const isEdit = !!initialData;
+  const [content, setContent] = useState(initialData?.content ?? "");
   const [files, setFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
-  const [weather, setWeather] = useState<WeatherType>("sunny");
-  const [isPublic, setIsPublic] = useState(true);
+  const [previews, setPreviews] = useState<string[]>(initialData?.photoUrls ?? []);
+  const [weather, setWeather] = useState<WeatherType>(initialData?.weather ?? "sunny");
+  const [isPublic, setIsPublic] = useState(initialData?.isPublic ?? true);
   const [observedAt, setObservedAt] = useState(
-    new Date().toISOString().split("T")[0]
+    initialData?.observedAt ?? new Date().toISOString().split("T")[0]
   );
+  const [existingPhotos] = useState<string[]>(initialData?.photoUrls ?? []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
-    if (selected.length > 5) {
+    const totalCount = existingPhotos.length + selected.length;
+    if (totalCount > 5) {
       alert("사진은 최대 5장까지 첨부할 수 있어요.");
       return;
     }
-    previews.forEach((url) => URL.revokeObjectURL(url));
+    // 새 파일 미리보기만 해제 (기존 URL은 유지)
+    previews.filter((url) => !existingPhotos.includes(url)).forEach((url) => URL.revokeObjectURL(url));
     setFiles(selected);
-    setPreviews(selected.map((f) => URL.createObjectURL(f)));
+    setPreviews([...existingPhotos, ...selected.map((f) => URL.createObjectURL(f))]);
   };
 
   const removeFile = (index: number) => {
@@ -151,7 +164,7 @@ export default function PostForm({ onSubmit, loading = false }: PostFormProps) {
       </div>
 
       <Button type="submit" loading={loading} size="lg" className="w-full bg-green-500 hover:bg-green-600">
-        관찰 일지 올리기
+        {isEdit ? "수정 완료" : "관찰 일지 올리기"}
       </Button>
     </form>
   );

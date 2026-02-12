@@ -10,15 +10,24 @@ import Card from "@/components/ui/Card";
 interface MissionCardProps {
   mission: Mission;
   role: "teacher" | "student";
+  onDelete?: (missionId: string) => void;
 }
 
-export default function MissionCard({ mission, role }: MissionCardProps) {
+export default function MissionCard({ mission, role, onDelete }: MissionCardProps) {
   const href =
     role === "teacher"
       ? `/teacher/board/${mission.id}`
       : `/student/write/${mission.id}`;
 
   const layoutLabel = LAYOUT_OPTIONS.find((o) => o.value === mission.layoutType)?.label ?? "";
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (window.confirm(`"${mission.title}" 미션을 삭제하시겠습니까?\n관련된 학생 일지는 유지됩니다.`)) {
+      onDelete?.(mission.id);
+    }
+  };
 
   return (
     <Link href={href}>
@@ -61,6 +70,14 @@ export default function MissionCard({ mission, role }: MissionCardProps) {
           <span>
             {format(mission.startDate, "M/d", { locale: ko })} ~ {format(mission.endDate, "M/d", { locale: ko })}
           </span>
+          {onDelete && (
+            <button
+              onClick={handleDelete}
+              className="ml-auto text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded transition"
+            >
+              삭제
+            </button>
+          )}
         </div>
       </Card>
     </Link>
