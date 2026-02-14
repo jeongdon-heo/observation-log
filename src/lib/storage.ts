@@ -1,5 +1,5 @@
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "./firebase";
+import { getStorageInstance } from "./firebase";
 import { v4 as uuidv4 } from "uuid";
 
 /**
@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 export async function uploadImage(file: File, folder: string = "observations"): Promise<string> {
   const ext = file.name.split(".").pop();
   const fileName = `${folder}/${uuidv4()}.${ext}`;
-  const storageRef = ref(storage, fileName);
+  const storageRef = ref(getStorageInstance(), fileName);
 
   await uploadBytes(storageRef, file);
   const downloadUrl = await getDownloadURL(storageRef);

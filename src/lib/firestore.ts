@@ -13,7 +13,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
-import { db } from "./firebase";
+import { getDb } from "./firebase";
 import type {
   User,
   DBUser,
@@ -40,25 +40,25 @@ export function getAcademicYear(date?: Date): number {
 // ==================== Users ====================
 
 export async function setUser(data: Omit<DBUser, "createdAt">) {
-  await setDoc(doc(db, "users", data.uid), {
+  await setDoc(doc(getDb(), "users", data.uid), {
     ...data,
     createdAt: serverTimestamp(),
   });
 }
 
 export async function getUser(uid: string): Promise<User | null> {
-  const snap = await getDoc(doc(db, "users", uid));
+  const snap = await getDoc(doc(getDb(), "users", uid));
   if (!snap.exists()) return null;
   const d = snap.data() as DBUser;
   return { ...d, createdAt: toDate(d.createdAt) };
 }
 
 export async function updateUser(uid: string, data: Partial<DBUser>) {
-  await updateDoc(doc(db, "users", uid), data);
+  await updateDoc(doc(getDb(), "users", uid), data);
 }
 
 export async function deleteUser(uid: string) {
-  await deleteDoc(doc(db, "users", uid));
+  await deleteDoc(doc(getDb(), "users", uid));
 }
 
 /** 학생 uid 이전: 유저 문서 복사 + posts/comments의 authorId 변경 */
@@ -69,12 +69,12 @@ export async function migrateStudentUid(
   newPassword: string
 ) {
   // 1. 기존 유저 문서 읽기
-  const oldSnap = await getDoc(doc(db, "users", oldUid));
+  const oldSnap = await getDoc(doc(getDb(), "users", oldUid));
   if (!oldSnap.exists()) throw new Error("기존 유저 문서를 찾을 수 없습니다.");
   const oldData = oldSnap.data() as DBUser;
 
   // 2. 새 uid로 유저 문서 생성
-  await setDoc(doc(db, "users", newUid), {
+  await setDoc(doc(getDb(), "users", newUid), {
     ...oldData,
     uid: newUid,
     email: newEmail,
@@ -82,29 +82,29 @@ export async function migrateStudentUid(
   });
 
   // 3. 기존 유저 문서 삭제
-  await deleteDoc(doc(db, "users", oldUid));
+  await deleteDoc(doc(getDb(), "users", oldUid));
 
   // 4. posts의 authorId 업데이트
   const postsSnap = await getDocs(
-    query(collection(db, "posts"), where("authorId", "==", oldUid))
+    query(collection(getDb(), "posts"), where("authorId", "==", oldUid))
   );
   for (const s of postsSnap.docs) {
-    await updateDoc(doc(db, "posts", s.id), { authorId: newUid });
+    await updateDoc(doc(getDb(), "posts", s.id), { authorId: newUid });
   }
 
   // 5. comments의 authorId 업데이트
   const commentsSnap = await getDocs(
-    query(collection(db, "comments"), where("authorId", "==", oldUid))
+    query(collection(getDb(), "comments"), where("authorId", "==", oldUid))
   );
   for (const s of commentsSnap.docs) {
-    await updateDoc(doc(db, "comments", s.id), { authorId: newUid });
+    await updateDoc(doc(getDb(), "comments", s.id), { authorId: newUid });
   }
 }
 
 export async function findClassByInviteCode(code: string): Promise<string | null> {
   const normalizedCode = code.toLowerCase().trim();
   const q = query(
-    collection(db, "users"),
+    collection(getDb(), "users"),
     where("role", "==", "teacher")
   );
   const snap = await getDocs(q);
@@ -121,7 +121,7 @@ export async function findClassByInviteCode(code: string): Promise<string | null
 export async function findClassIdByCode(code: string): Promise<string | null> {
   const normalizedCode = code.toLowerCase().trim();
   // 갤러리에서 검색
-  const gSnap = await getDocs(collection(db, "galleries"));
+  const gSnap = await getDocs(collection(getDb(), "galleries"));
   for (const d of gSnap.docs) {
     const classId = (d.data() as DBGallery).classId;
     if (classId && classId.slice(0, 6) === normalizedCode) {
@@ -129,7 +129,7 @@ export async function findClassIdByCode(code: string): Promise<string | null> {
     }
   }
   // 게시물에서 검색
-  const pSnap = await getDocs(query(collection(db, "posts"), where("classId", ">=", normalizedCode), where("classId", "<", normalizedCode + "\uf8ff")));
+  const pSnap = await getDocs(query(collection(getDb(), "posts"), where("classId", ">=", normalizedCode), where("classId", "<", normalizedCode + "\uf8ff")));
   if (pSnap.docs.length > 0) {
     return (pSnap.docs[0].data() as DBPost).classId;
   }
@@ -142,19 +142,19 @@ export async function joinClass(uid: string, classId: string) {
   if (user && user.classId && user.classId !== classId) {
     const prev = user.previousClassIds || [];
     if (!prev.includes(user.classId)) {
-      await updateDoc(doc(db, "users", uid), {
+      await updateDoc(doc(getDb(), "users", uid), {
         classId,
         previousClassIds: [...prev, user.classId],
       });
       return;
     }
   }
-  await updateDoc(doc(db, "users", uid), { classId });
+  await updateDoc(doc(getDb(), "users", uid), { classId });
 }
 
 export async function getStudentsByClass(classId: string): Promise<User[]> {
   const q = query(
-    collection(db, "users"),
+    collection(getDb(), "users"),
     where("classId", "==", classId),
     where("role", "==", "student")
   );
@@ -171,7 +171,7 @@ export async function getStudentsByClass(classId: string): Promise<User[]> {
 export async function createMission(
   data: Omit<DBMission, "id" | "createdAt" | "updatedAt">
 ): Promise<string> {
-  const ref = await addDoc(collection(db, "missions"), {
+  const ref = await addDoc(collection(getDb(), "missions"), {
     ...data,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -180,7 +180,7 @@ export async function createMission(
 }
 
 export async function getMission(missionId: string): Promise<Mission | null> {
-  const snap = await getDoc(doc(db, "missions", missionId));
+  const snap = await getDoc(doc(getDb(), "missions", missionId));
   if (!snap.exists()) return null;
   const d = snap.data() as DBMission;
   return {
@@ -195,7 +195,7 @@ export async function getMission(missionId: string): Promise<Mission | null> {
 
 export async function getMissionsByClass(classId: string): Promise<Mission[]> {
   const q = query(
-    collection(db, "missions"),
+    collection(getDb(), "missions"),
     where("classId", "==", classId)
   );
   const snap = await getDocs(q);
@@ -214,14 +214,14 @@ export async function getMissionsByClass(classId: string): Promise<Mission[]> {
 }
 
 export async function updateMission(missionId: string, data: Partial<DBMission>) {
-  await updateDoc(doc(db, "missions", missionId), {
+  await updateDoc(doc(getDb(), "missions", missionId), {
     ...data,
     updatedAt: serverTimestamp(),
   });
 }
 
 export async function deleteMission(missionId: string) {
-  await deleteDoc(doc(db, "missions", missionId));
+  await deleteDoc(doc(getDb(), "missions", missionId));
 }
 
 // ==================== Posts ====================
@@ -229,7 +229,7 @@ export async function deleteMission(missionId: string) {
 export async function createPost(
   data: Omit<DBPost, "id" | "createdAt" | "updatedAt">
 ): Promise<string> {
-  const ref = await addDoc(collection(db, "posts"), {
+  const ref = await addDoc(collection(getDb(), "posts"), {
     ...data,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -238,7 +238,7 @@ export async function createPost(
 }
 
 export async function getPost(postId: string): Promise<Post | null> {
-  const snap = await getDoc(doc(db, "posts", postId));
+  const snap = await getDoc(doc(getDb(), "posts", postId));
   if (!snap.exists()) return null;
   const d = snap.data() as DBPost;
   return {
@@ -252,7 +252,7 @@ export async function getPost(postId: string): Promise<Post | null> {
 
 export async function getPostsByMission(missionId: string): Promise<Post[]> {
   const q = query(
-    collection(db, "posts"),
+    collection(getDb(), "posts"),
     where("missionId", "==", missionId)
   );
   const snap = await getDocs(q);
@@ -271,7 +271,7 @@ export async function getPostsByMission(missionId: string): Promise<Post[]> {
 
 export async function getPostsByClass(classId: string, academicYear?: number): Promise<Post[]> {
   const q = query(
-    collection(db, "posts"),
+    collection(getDb(), "posts"),
     where("classId", "==", classId),
     where("isPublic", "==", true)
   );
@@ -296,7 +296,7 @@ export async function getPostsByClass(classId: string, academicYear?: number): P
 
 export async function getAllPostsByClass(classId: string, academicYear?: number): Promise<Post[]> {
   const q = query(
-    collection(db, "posts"),
+    collection(getDb(), "posts"),
     where("classId", "==", classId)
   );
   const snap = await getDocs(q);
@@ -347,7 +347,7 @@ export async function getAllPostsByClassIds(classIds: string[], academicYear?: n
 
 export async function getPostsByAuthor(authorId: string): Promise<Post[]> {
   const q = query(
-    collection(db, "posts"),
+    collection(getDb(), "posts"),
     where("authorId", "==", authorId)
   );
   const snap = await getDocs(q);
@@ -365,14 +365,14 @@ export async function getPostsByAuthor(authorId: string): Promise<Post[]> {
 }
 
 export async function updatePost(postId: string, data: Partial<DBPost>) {
-  await updateDoc(doc(db, "posts", postId), {
+  await updateDoc(doc(getDb(), "posts", postId), {
     ...data,
     updatedAt: serverTimestamp(),
   });
 }
 
 export async function deletePost(postId: string) {
-  await deleteDoc(doc(db, "posts", postId));
+  await deleteDoc(doc(getDb(), "posts", postId));
 }
 
 // ==================== Comments ====================
@@ -380,7 +380,7 @@ export async function deletePost(postId: string) {
 export async function createComment(
   data: Omit<DBComment, "id" | "createdAt">
 ): Promise<string> {
-  const ref = await addDoc(collection(db, "comments"), {
+  const ref = await addDoc(collection(getDb(), "comments"), {
     ...data,
     createdAt: serverTimestamp(),
   });
@@ -389,7 +389,7 @@ export async function createComment(
 
 export async function getCommentsByPost(postId: string): Promise<Comment[]> {
   const q = query(
-    collection(db, "comments"),
+    collection(getDb(), "comments"),
     where("postId", "==", postId)
   );
   const snap = await getDocs(q);
@@ -410,7 +410,7 @@ export async function createGallery(
   classId: string,
   academicYear: number
 ): Promise<string> {
-  const ref = await addDoc(collection(db, "galleries"), {
+  const ref = await addDoc(collection(getDb(), "galleries"), {
     classId,
     academicYear,
     status: "open",
@@ -420,14 +420,14 @@ export async function createGallery(
 }
 
 export async function closeGallery(galleryId: string) {
-  await updateDoc(doc(db, "galleries", galleryId), {
+  await updateDoc(doc(getDb(), "galleries", galleryId), {
     status: "closed",
     closedAt: serverTimestamp(),
   });
 }
 
 export async function reopenGallery(galleryId: string) {
-  await updateDoc(doc(db, "galleries", galleryId), {
+  await updateDoc(doc(getDb(), "galleries", galleryId), {
     status: "open",
     closedAt: null,
   });
@@ -435,7 +435,7 @@ export async function reopenGallery(galleryId: string) {
 
 export async function getGalleriesByClass(classId: string): Promise<Gallery[]> {
   const q = query(
-    collection(db, "galleries"),
+    collection(getDb(), "galleries"),
     where("classId", "==", classId)
   );
   const snap = await getDocs(q);
@@ -468,13 +468,13 @@ export async function getGalleriesByClassIds(classIds: string[]): Promise<Galler
 /** 특정 학급의 열린 갤러리를 모두 마감 (새 학급 생성 시 호출) */
 export async function closeOpenGalleriesByClass(classId: string) {
   const q = query(
-    collection(db, "galleries"),
+    collection(getDb(), "galleries"),
     where("classId", "==", classId),
     where("status", "==", "open")
   );
   const snap = await getDocs(q);
   const promises = snap.docs.map((s) =>
-    updateDoc(doc(db, "galleries", s.id), {
+    updateDoc(doc(getDb(), "galleries", s.id), {
       status: "closed",
       closedAt: serverTimestamp(),
     })

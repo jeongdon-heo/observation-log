@@ -8,7 +8,7 @@ import {
   deleteUser as firebaseDeleteUser,
 } from "firebase/auth";
 import { initializeApp, deleteApp } from "firebase/app";
-import { auth } from "./firebase";
+import { getAuthInstance } from "./firebase";
 import { setUser, updateUser, deleteUser, migrateStudentUid } from "./firestore";
 import type { UserRole } from "@/types";
 
@@ -33,7 +33,7 @@ export async function signUp(
   name: string,
   role: UserRole
 ) {
-  const credential = await createUserWithEmailAndPassword(auth, email, password);
+  const credential = await createUserWithEmailAndPassword(getAuthInstance(), email, password);
   await updateProfile(credential.user, { displayName: name });
   await setUser({
     uid: credential.user.uid,
@@ -47,12 +47,12 @@ export async function signUp(
 }
 
 export async function signIn(email: string, password: string) {
-  const credential = await signInWithEmailAndPassword(auth, email, password);
+  const credential = await signInWithEmailAndPassword(getAuthInstance(), email, password);
   return credential.user;
 }
 
 export async function signOut() {
-  await firebaseSignOut(auth);
+  await firebaseSignOut(getAuthInstance());
 }
 
 /** 새 학급 만들기 취소 (이전 학급으로 되돌리기) */
