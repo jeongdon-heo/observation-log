@@ -38,9 +38,10 @@ export async function POST(request: NextRequest) {
       content: praiseContent,
     });
   } catch (error) {
-    console.error("AI 댓글 생성 실패:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("AI 댓글 생성 실패:", message);
     return NextResponse.json(
-      { error: "AI 댓글 생성에 실패했습니다." },
+      { error: "AI 댓글 생성에 실패했습니다.", detail: message },
       { status: 500 }
     );
   }
