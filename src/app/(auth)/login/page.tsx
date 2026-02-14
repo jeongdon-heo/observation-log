@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "@/lib/auth";
+import { getUser } from "@/lib/firestore";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,8 +19,9 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await signIn(email, password);
-      router.push("/");
+      const cred = await signIn(email, password);
+      const profile = await getUser(cred.uid);
+      router.push(profile?.role === "teacher" ? "/teacher" : "/student");
     } catch {
       setError("이메일 또는 비밀번호가 올바르지 않습니다.");
     } finally {

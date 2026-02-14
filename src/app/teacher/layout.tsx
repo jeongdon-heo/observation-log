@@ -28,7 +28,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
       <header className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/teacher" className="font-bold text-lg text-blue-600">
-            관찰 일지 - 선생님
+            세상 돋보기
           </Link>
           <nav className="flex items-center gap-4">
             <Link

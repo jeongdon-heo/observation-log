@@ -19,6 +19,7 @@ export interface DBUser {
   classId: string;               // 소속 학급 ID
   email: string;
   managedPassword?: string;      // 교사가 생성한 계정의 비밀번호 (교사 확인/수정용)
+  previousClassIds?: string[];   // 이전 학급 ID 목록 (교사 전용, 새 학급 생성 시 기존 classId 보관)
   createdAt: Timestamp;
 }
 
@@ -65,6 +66,7 @@ export interface DBPost {
   content: string;               // 관찰 내용
   weather: WeatherType;          // 관찰 당시 날씨
   isPublic: boolean;             // 공개 여부 (false면 교사만 열람)
+  academicYear?: number;         // 학년도 (예: 2025 = 2025학년도, 3월~익년2월)
   observedAt: Timestamp;         // 관찰 날짜 (학생이 선택)
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -84,6 +86,21 @@ export interface DBComment {
   authorName: string;            // 표시 이름 ("AI 선생님" / 학생이름 / 교사이름)
   content: string;               // 댓글 내용
   createdAt: Timestamp;
+}
+
+// ==================== 5. Galleries ====================
+// 컬렉션: /galleries/{galleryId}
+// 학년도별 갤러리 관리
+
+export type GalleryStatus = "open" | "closed";
+
+export interface DBGallery {
+  id: string;
+  classId: string;               // 소속 학급 ID
+  academicYear: number;          // 학년도 (예: 2025)
+  status: GalleryStatus;         // 진행중 / 마감
+  createdAt: Timestamp;
+  closedAt?: Timestamp;          // 마감일
 }
 
 // ============================================================
@@ -110,6 +127,11 @@ export interface Post extends Omit<DBPost, "observedAt" | "createdAt" | "updated
 
 export interface Comment extends Omit<DBComment, "createdAt"> {
   createdAt: Date;
+}
+
+export interface Gallery extends Omit<DBGallery, "createdAt" | "closedAt"> {
+  createdAt: Date;
+  closedAt?: Date;
 }
 
 // ============================================================

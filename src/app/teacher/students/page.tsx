@@ -6,6 +6,7 @@ import { getStudentsByClass } from "@/lib/firestore";
 import {
   createStudentAccount,
   updateStudentCredentials,
+  deleteStudentAccount,
   generateDefaultEmail,
   generateDefaultPassword,
 } from "@/lib/auth";
@@ -40,6 +41,10 @@ export default function StudentsPage() {
   // 생성 결과
   const [createdAccounts, setCreatedAccounts] = useState<CreatedAccount[]>([]);
   const [error, setError] = useState("");
+
+  // 선택 삭제
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   // 수정 모달
   const [editingStudent, setEditingStudent] = useState<User | null>(null);
@@ -152,6 +157,49 @@ export default function StudentsPage() {
     alert("클립보드에 복사되었습니다!");
   };
 
+  // 체크박스 토글
+  const toggleSelect = (uid: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(uid)) next.delete(uid);
+      else next.add(uid);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === students.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(students.map((s) => s.uid)));
+    }
+  };
+
+  // 선택 삭제
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    const count = selectedIds.size;
+    if (!confirm(`선택한 ${count}명의 학생을 삭제하시겠습니까?\n(작성한 일지와 댓글은 유지됩니다)`)) return;
+
+    setDeleting(true);
+    try {
+      const uids = Array.from(selectedIds);
+      for (const uid of uids) {
+        const student = students.find((s) => s.uid === uid);
+        if (!student) continue;
+        await deleteStudentAccount(uid, student.email, student.managedPassword);
+      }
+      setSelectedIds(new Set());
+      await fetchStudents();
+    } catch (err) {
+      console.error("학생 삭제 실패:", err);
+      alert("일부 학생 삭제에 실패했습니다.");
+      await fetchStudents();
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // 수정 모달 열기
   const openEdit = (student: User) => {
     setEditingStudent(student);
@@ -195,6 +243,8 @@ export default function StudentsPage() {
         setEditError("이미 사용 중인 이메일입니다.");
       } else if (message.includes("requires-recent-login")) {
         setEditError("보안 정책으로 수정할 수 없습니다. 계정을 새로 만들어주세요.");
+      } else if (message.includes("operation-not-allowed")) {
+        setEditError("이메일 변경이 허용되지 않습니다. 비밀번호만 변경해주세요.");
       } else {
         setEditError(`수정 실패: ${message}`);
       }
@@ -278,28 +328,6 @@ export default function StudentsPage() {
           )}
         </form>
 
-        {/* 일괄 추가 */}
-        <details className="group">
-          <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
-            여러 명 한번에 추가하기
-          </summary>
-          <div className="mt-3 space-y-2">
-            <textarea
-              placeholder={"한 줄에 한 명씩 이름을 입력하세요\n예:\n김민수\n이영희\n박철수"}
-              value={bulkNames}
-              onChange={(e) => setBulkNames(e.target.value)}
-              rows={5}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
-            />
-            <button
-              onClick={handleCreateBulk}
-              disabled={bulkCreating || !bulkNames.trim()}
-              className="px-5 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition disabled:opacity-50"
-            >
-              {bulkCreating ? bulkProgress : "일괄 추가"}
-            </button>
-          </div>
-        </details>
       </div>
 
       {/* 생성 결과 */}
@@ -344,9 +372,20 @@ export default function StudentsPage() {
 
       {/* 학생 명단 */}
       <div className="bg-white rounded-xl border p-6">
-        <h2 className="text-lg font-bold mb-4">
-          학생 명단 <span className="text-sm font-normal text-gray-400">({students.length}명)</span>
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold">
+            학생 명단 <span className="text-sm font-normal text-gray-400">({students.length}명)</span>
+          </h2>
+          {selectedIds.size > 0 && (
+            <button
+              onClick={handleDeleteSelected}
+              disabled={deleting}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition disabled:opacity-50"
+            >
+              {deleting ? "삭제 중..." : `선택 삭제 (${selectedIds.size}명)`}
+            </button>
+          )}
+        </div>
 
         {students.length === 0 ? (
           <p className="text-gray-400 text-sm text-center py-8">
@@ -357,6 +396,14 @@ export default function StudentsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-gray-500 border-b">
+                  <th className="py-2 pr-2 w-8">
+                    <input
+                      type="checkbox"
+                      checked={students.length > 0 && selectedIds.size === students.length}
+                      onChange={toggleSelectAll}
+                      className="rounded border-gray-300"
+                    />
+                  </th>
                   <th className="py-2 pr-4">#</th>
                   <th className="py-2 pr-4">이름</th>
                   <th className="py-2 pr-4">이메일</th>
@@ -367,7 +414,15 @@ export default function StudentsPage() {
               </thead>
               <tbody>
                 {students.map((s, i) => (
-                  <tr key={s.uid} className="border-t border-gray-100 hover:bg-gray-50">
+                  <tr key={s.uid} className={`border-t border-gray-100 hover:bg-gray-50 ${selectedIds.has(s.uid) ? "bg-red-50" : ""}`}>
+                    <td className="py-2.5 pr-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(s.uid)}
+                        onChange={() => toggleSelect(s.uid)}
+                        className="rounded border-gray-300"
+                      />
+                    </td>
                     <td className="py-2.5 pr-4 text-gray-400">{i + 1}</td>
                     <td className="py-2.5 pr-4 font-medium">{s.name}</td>
                     <td className="py-2.5 pr-4 text-gray-500 font-mono text-xs">{s.email}</td>
@@ -415,6 +470,9 @@ export default function StudentsPage() {
                 onChange={(e) => setEditEmail(e.target.value)}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono"
               />
+              {editEmail !== editingStudent.email && (
+                <p className="text-xs text-orange-500 mt-1">이메일 변경 시 계정이 재생성됩니다</p>
+              )}
             </div>
 
             <div>

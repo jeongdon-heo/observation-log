@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Timestamp } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
-import { createPost, getMission } from "@/lib/firestore";
+import { createPost, getMission, getAcademicYear, getGalleriesByClass } from "@/lib/firestore";
 import { uploadMultipleImages } from "@/lib/storage";
 import { PostForm } from "@/components/observation";
 import type { Mission, WeatherType } from "@/types";
@@ -19,10 +19,26 @@ export default function WritePostPage() {
   const [mission, setMission] = useState<Mission | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
+  const [aiComment, setAiComment] = useState<string | null>(null);
+  const [postAcademicYear, setPostAcademicYear] = useState<number>(getAcademicYear());
 
   useEffect(() => {
     getMission(missionId).then(setMission);
   }, [missionId]);
+
+  // 현재 학년도 갤러리가 마감되었으면 다음 학년도로 설정
+  useEffect(() => {
+    async function checkGallery() {
+      if (!user?.classId) return;
+      const galleries = await getGalleriesByClass(user.classId);
+      const currentYear = getAcademicYear();
+      const gallery = galleries.find((g) => g.academicYear === currentYear);
+      if (gallery?.status === "closed") {
+        setPostAcademicYear(currentYear + 1);
+      }
+    }
+    checkGallery();
+  }, [user?.classId]);
 
   const handleSubmit = async (data: {
     content: string;
@@ -48,13 +64,14 @@ export default function WritePostPage() {
         content: data.content,
         weather: data.weather,
         isPublic: data.isPublic,
+        academicYear: postAcademicYear,
         observedAt: Timestamp.fromDate(new Date(data.observedAt)),
       });
 
       // AI 칭찬 댓글 생성 (완료될 때까지 대기)
       setLoadingMessage("AI 선생님이 댓글을 달고 있어요...");
       try {
-        await fetch("/api/ai-comment", {
+        const res = await fetch("/api/ai-comment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -65,6 +82,11 @@ export default function WritePostPage() {
             photoUrls,
           }),
         });
+        const result = await res.json();
+        if (result.content) {
+          setAiComment(result.content);
+          return; // 모달에서 확인 누르면 이동
+        }
       } catch (err) {
         console.error("AI 댓글 생성 실패 (일지는 저장됨):", err);
       }
@@ -92,7 +114,34 @@ export default function WritePostPage() {
         )}
       </div>
 
+      {postAcademicYear !== getAcademicYear() && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-700">
+          {getAcademicYear()}학년도 갤러리가 마감되어 <strong>{postAcademicYear}학년도</strong>에 기록됩니다.
+        </div>
+      )}
+
       <PostForm onSubmit={handleSubmit} loading={loading} loadingMessage={loadingMessage} />
+
+      {/* AI 댓글 모달 */}
+      {aiComment && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-xl">
+            <div className="text-center">
+              <span className="text-4xl">AI</span>
+              <h2 className="text-lg font-bold mt-2">AI 선생님의 댓글</h2>
+            </div>
+            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-green-50 rounded-xl p-4">
+              {aiComment}
+            </p>
+            <button
+              onClick={() => router.push("/student")}
+              className="w-full bg-green-500 text-white py-3 rounded-lg font-medium hover:bg-green-600 transition"
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

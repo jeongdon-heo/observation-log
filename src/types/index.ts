@@ -11,12 +11,15 @@ export {
   type DBMission,
   type DBPost,
   type DBComment,
+  type DBGallery,
+  type GalleryStatus,
 
   // 클라이언트 타입 (Date)
   type User,
   type Mission,
   type Post,
   type Comment,
+  type Gallery,
 
   // 옵션/상수
   type LayoutOption,

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { getPostsByClass } from "@/lib/firestore";
+import { getAllPostsByClassIds, getAcademicYear } from "@/lib/firestore";
 import { BoardView } from "@/components/board";
 import { Spinner, EmptyState } from "@/components/ui";
 import type { Post } from "@/types";
@@ -12,15 +12,29 @@ export default function GalleryPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const currentYear = getAcademicYear();
+
+  // 학생의 모든 classId (현재 + 이전)
+  const allClassIds = user?.classId
+    ? [user.classId, ...(user.previousClassIds || [])]
+    : [];
+
   useEffect(() => {
     async function fetchPosts() {
-      if (!user?.classId) {
+      if (allClassIds.length === 0) {
         setLoading(false);
         return;
       }
+      setLoading(true);
       try {
-        const data = await getPostsByClass(user.classId);
-        setPosts(data);
+        const postsData = await getAllPostsByClassIds(allClassIds);
+        // 현재 학년도 이상의 글만 필터 + 공개 글 또는 본인 글
+        const filtered = postsData.filter(
+          (p) =>
+            (p.academicYear ?? getAcademicYear(p.createdAt)) >= currentYear &&
+            (p.isPublic || p.authorId === user?.uid)
+        );
+        setPosts(filtered);
       } catch (err) {
         console.error("갤러리 불러오기 실패:", err);
       } finally {
@@ -28,6 +42,7 @@ export default function GalleryPage() {
       }
     }
     fetchPosts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.classId]);
 
   if (loading) {
@@ -51,7 +66,7 @@ export default function GalleryPage() {
         <EmptyState
           icon="🖼️"
           title="아직 공개된 관찰 일지가 없습니다"
-          description="친구들이 관찰 일지를 작성하면 여기에 표시됩니다."
+          description={`${currentYear}학년도에 작성된 관찰 일지가 없습니다.`}
         />
       ) : (
         <BoardView posts={posts} defaultLayout="wall" />

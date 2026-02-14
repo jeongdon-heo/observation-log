@@ -10,8 +10,8 @@ const geistSans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "관찰 일지",
-  description: "초등학교 학급 관찰 일지 웹 앱",
+  title: "세상 돋보기",
+  description: "초등학교 자연 관찰 기록 웹 앱",
 };
 
 export default function RootLayout({

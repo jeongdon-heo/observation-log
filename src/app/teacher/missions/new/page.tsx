@@ -14,6 +14,7 @@ export default function NewMissionPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [title, setTitle] = useState("");
@@ -24,6 +25,32 @@ export default function NewMissionPage() {
   const [endDate, setEndDate] = useState("");
   const [exampleImage, setExampleImage] = useState<File | undefined>();
   const [preview, setPreview] = useState("");
+
+  const handleAIDescription = async () => {
+    if (!title.trim()) {
+      setError("미션 제목을 먼저 입력해주세요.");
+      return;
+    }
+    setAiLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/ai-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      const data = await res.json();
+      if (data.description) {
+        setDescription(data.description);
+      } else {
+        setError("AI 설명 생성에 실패했습니다.");
+      }
+    } catch {
+      setError("AI 설명 생성에 실패했습니다.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -96,12 +123,29 @@ export default function NewMissionPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">설명</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-medium text-gray-700">설명</label>
+            <button
+              type="button"
+              onClick={handleAIDescription}
+              disabled={aiLoading || !title.trim()}
+              className="px-3 py-1 bg-purple-500 text-white text-xs font-medium rounded-full hover:bg-purple-600 transition disabled:opacity-50 flex items-center gap-1"
+            >
+              {aiLoading ? (
+                <>
+                  <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  생성 중...
+                </>
+              ) : (
+                "AI 설명 생성"
+              )}
+            </button>
+          </div>
           <textarea
             placeholder="학생들에게 안내할 내용을 적어주세요"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            rows={3}
+            rows={5}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           />
         </div>

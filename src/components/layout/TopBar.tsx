@@ -9,7 +9,7 @@ interface TopBarProps {
   showProfile?: boolean;
 }
 
-export default function TopBar({ title = "관찰 일지", showProfile = true }: TopBarProps) {
+export default function TopBar({ title = "세상 돋보기", showProfile = true }: TopBarProps) {
   const { user } = useAuth();
   const router = useRouter();
 

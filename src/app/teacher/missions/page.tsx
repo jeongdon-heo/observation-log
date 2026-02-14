@@ -13,6 +13,7 @@ export default function MissionsPage() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -22,6 +23,32 @@ export default function MissionsPage() {
   const [weekLabel, setWeekLabel] = useState("");
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [endDate, setEndDate] = useState("");
+
+  const handleAIDescription = async () => {
+    if (!title.trim()) {
+      setError("미션 제목을 먼저 입력해주세요.");
+      return;
+    }
+    setAiLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/ai-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      const data = await res.json();
+      if (data.description) {
+        setDescription(data.description);
+      } else {
+        setError("AI 설명 생성에 실패했습니다.");
+      }
+    } catch {
+      setError("AI 설명 생성에 실패했습니다.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const fetchMissions = useCallback(async () => {
     if (!user?.classId) {
@@ -106,14 +133,31 @@ export default function MissionsPage() {
           </div>
 
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">설명</label>
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700">설명</label>
+              <button
+                type="button"
+                onClick={handleAIDescription}
+                disabled={aiLoading || !title.trim()}
+                className="px-3 py-1 bg-purple-500 text-white text-xs font-medium rounded-full hover:bg-purple-600 transition disabled:opacity-50 flex items-center gap-1"
+              >
+                {aiLoading ? (
+                  <>
+                    <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    생성 중...
+                  </>
+                ) : (
+                  "AI 설명 생성"
+                )}
+              </button>
+            </div>
             <textarea
               id="description"
               name="description"
               placeholder="학생들에게 안내할 내용을 적어주세요"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              rows={3}
+              rows={5}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
           </div>

@@ -97,3 +97,31 @@ export async function generateAIComment(params: {
     return result.response.text();
   });
 }
+
+const MISSION_DESCRIPTION_INSTRUCTION = `당신은 초등학교 자연 관찰 수업을 설계하는 베테랑 교사입니다.
+
+미션 제목을 보고, 학생들에게 안내할 관찰 미션 설명을 작성해주세요.
+
+규칙:
+- 초등학생이 이해하기 쉬운 친근한 말투로 작성하세요.
+- 무엇을 관찰해야 하는지 구체적으로 안내하세요.
+- 반드시 관찰하면서 느낀 점이나 생각을 함께 적도록 유도하는 문장을 포함하세요.
+  예: "관찰하면서 어떤 생각이 들었는지", "느낌이나 궁금한 점도 함께 적어보세요" 등
+- 5~7문장 이내로 작성하세요.
+- 이모지를 2~3개 자연스럽게 사용하세요.
+- JSON이 아닌, 바로 읽을 수 있는 문자열로 작성하세요.`;
+
+/**
+ * 미션 제목을 기반으로 AI가 미션 설명을 생성합니다.
+ */
+export async function generateMissionDescription(title: string): Promise<string> {
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash",
+    systemInstruction: MISSION_DESCRIPTION_INSTRUCTION,
+  });
+
+  return callWithRetry(async () => {
+    const result = await model.generateContent(`미션 제목: ${title}`);
+    return result.response.text();
+  });
+}

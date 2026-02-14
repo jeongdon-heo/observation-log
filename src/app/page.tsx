@@ -27,7 +27,7 @@ export default function HomePage() {
     <div className="flex flex-col items-center justify-center min-h-screen px-4">
       <div className="max-w-md w-full text-center space-y-8">
         <div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">관찰 일지</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">세상 돋보기</h1>
           <p className="text-gray-600 text-lg">우리 반 관찰 일지를 함께 기록해요</p>
         </div>
         <div className="space-y-4">

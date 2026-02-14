@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { getMissionsByClass, getStudentsByClass } from "@/lib/firestore";
+import { getMissionsByClass, getStudentsByClass, findClassIdByCode, updateUser } from "@/lib/firestore";
+import { createNewClass, revertToPreviousClass } from "@/lib/auth";
 import { Card, Spinner } from "@/components/ui";
 import type { Mission, User } from "@/types";
 
@@ -47,7 +48,7 @@ export default function TeacherDashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{user?.name} 선생님의 대시보드</h1>
+      <h1 className="text-2xl font-bold">{user?.name}의 대시보드</h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card className="p-5 text-center">
@@ -89,11 +90,85 @@ export default function TeacherDashboard() {
         </Link>
         <Card className="p-6">
           <div className="text-2xl mb-2">👨‍🏫</div>
-          <h2 className="text-lg font-semibold mb-1">학급 초대</h2>
+          <h2 className="text-lg font-semibold mb-1">학급 관리</h2>
           <p className="text-gray-500 text-sm mb-3">학생들에게 아래 초대 코드를 공유하세요</p>
           <div className="bg-gray-50 rounded-lg px-4 py-2 font-mono text-center text-lg tracking-widest font-bold text-gray-800">
             {user?.classId?.slice(0, 6).toUpperCase() || "—"}
           </div>
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={async () => {
+                if (!user) return;
+                const confirmed = window.confirm(
+                  "새 학급을 만들면 현재 학급의 미션·학생 목록이 새로 시작됩니다.\n이전 학년도 갤러리는 자동 마감되며 계속 열람 가능합니다.\n\n새 학년도를 위한 새 학급을 만드시겠습니까?"
+                );
+                if (!confirmed) return;
+                try {
+                  await createNewClass(user.uid, user.classId, user.previousClassIds || []);
+                  window.location.reload();
+                } catch (err) {
+                  console.error("새 학급 생성 실패:", err);
+                }
+              }}
+              className="flex-1 px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg border border-red-200 hover:bg-red-100 transition"
+            >
+              새 학급 만들기
+            </button>
+            {user?.previousClassIds && user.previousClassIds.length > 0 && (
+              <button
+                onClick={async () => {
+                  if (!user) return;
+                  const confirmed = window.confirm(
+                    "이전 학급으로 되돌리시겠습니까?\n현재 학급의 초대 코드는 사라집니다."
+                  );
+                  if (!confirmed) return;
+                  try {
+                    await revertToPreviousClass(user.uid, user.classId, user.previousClassIds || []);
+                    window.location.reload();
+                  } catch (err) {
+                    console.error("학급 되돌리기 실패:", err);
+                  }
+                }}
+                className="flex-1 px-4 py-2 bg-gray-50 text-gray-600 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-100 transition"
+              >
+                되돌리기
+              </button>
+            )}
+          </div>
+          <button
+            onClick={async () => {
+              if (!user) return;
+              const code = window.prompt("이전 학급의 초대 코드 6자리를 입력하세요:");
+              if (!code || code.trim().length < 6) return;
+              try {
+                const oldClassId = await findClassIdByCode(code.trim());
+                if (!oldClassId) {
+                  alert("해당 초대 코드의 학급을 찾을 수 없습니다.");
+                  return;
+                }
+                if (oldClassId === user.classId) {
+                  alert("현재 학급과 같은 코드입니다.");
+                  return;
+                }
+                const prev = user.previousClassIds || [];
+                if (prev.includes(oldClassId)) {
+                  alert("이미 연결된 학급입니다.");
+                  return;
+                }
+                await updateUser(user.uid, {
+                  previousClassIds: [...prev, oldClassId],
+                });
+                alert("이전 학급이 연결되었습니다. 갤러리에서 확인하세요.");
+                window.location.reload();
+              } catch (err) {
+                console.error("이전 학급 연결 실패:", err);
+                alert("이전 학급 연결에 실패했습니다.");
+              }
+            }}
+            className="w-full mt-2 px-4 py-2 bg-blue-50 text-blue-600 text-sm font-medium rounded-lg border border-blue-200 hover:bg-blue-100 transition"
+          >
+            이전 학급 연결
+          </button>
         </Card>
       </div>
 

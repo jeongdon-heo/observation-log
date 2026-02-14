@@ -28,7 +28,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       <header className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/student" className="font-bold text-lg text-green-600">
-            관찰 일지
+            세상 돋보기
           </Link>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-400">{user.name}</span>

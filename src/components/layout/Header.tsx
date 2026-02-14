@@ -26,7 +26,7 @@ export default function Header({ title }: HeaderProps) {
     <header className="bg-white border-b sticky top-0 z-10">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
         <Link href={homeLink} className={`font-bold text-lg ${color}`}>
-          {title || "관찰 일지"}
+          {title || "세상 돋보기"}
         </Link>
         <div className="flex items-center gap-4">
           {user && <span className="text-sm text-gray-500">{user.name}</span>}
