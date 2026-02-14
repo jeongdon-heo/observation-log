@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateMissionDescription } from "@/utils/ai";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: NextRequest) {
   try {
     const { title } = await request.json();

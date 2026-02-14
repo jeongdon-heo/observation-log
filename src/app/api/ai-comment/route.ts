@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateAIComment } from "@/utils/ai";
 import { createComment } from "@/lib/firestore";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: NextRequest) {
   try {
     const { postId, authorName, missionTitle, content, photoUrls } =
