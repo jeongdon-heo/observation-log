@@ -27,7 +27,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       if (fbUser) {
-        const profile = await getUser(fbUser.uid);
+        let profile = await getUser(fbUser.uid);
+        // 회원가입 직후 Firestore 프로필이 아직 안 써진 경우 재시도
+        if (!profile) {
+          await new Promise((r) => setTimeout(r, 1500));
+          profile = await getUser(fbUser.uid);
+        }
         setUser(profile);
       } else {
         setUser(null);

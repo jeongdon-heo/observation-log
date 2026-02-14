@@ -1,17 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "@/lib/auth";
 import { getUser } from "@/lib/firestore";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // 이미 로그인된 상태면 바로 리다이렉트
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace(user.role === "teacher" ? "/teacher" : "/student");
+    }
+  }, [authLoading, user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,13 +30,22 @@ export default function LoginPage() {
     try {
       const cred = await signIn(email, password);
       const profile = await getUser(cred.uid);
-      router.push(profile?.role === "teacher" ? "/teacher" : "/student");
+      router.replace(profile?.role === "teacher" ? "/teacher" : "/student");
     } catch {
       setError("이메일 또는 비밀번호가 올바르지 않습니다.");
     } finally {
       setLoading(false);
     }
   };
+
+  // 이미 로그인 중이면 스피너 표시
+  if (authLoading || user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen px-4">

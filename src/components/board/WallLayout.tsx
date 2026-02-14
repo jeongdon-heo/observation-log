@@ -11,9 +11,10 @@ import GalleryCard from "./GalleryCard";
 
 interface WallLayoutProps {
   posts: Post[];
+  onDelete?: (postId: string) => void;
 }
 
-export default function WallLayout({ posts }: WallLayoutProps) {
+export default function WallLayout({ posts, onDelete }: WallLayoutProps) {
   return (
     <div
       className="
@@ -28,7 +29,7 @@ export default function WallLayout({ posts }: WallLayoutProps) {
           style={{ animationDelay: `${i * 50}ms` }}
         >
           <div className="animate-fade-in-up">
-            <GalleryCard post={post} variant="wall" />
+            <GalleryCard post={post} variant="wall" onDelete={onDelete} />
           </div>
         </div>
       ))}

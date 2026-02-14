@@ -13,9 +13,10 @@ interface PostCardProps {
   post: Post;
   showAuthor?: boolean;
   editable?: boolean;
+  onDelete?: (postId: string) => void;
 }
 
-export default function PostCard({ post, showAuthor = true, editable = false }: PostCardProps) {
+export default function PostCard({ post, showAuthor = true, editable = false, onDelete }: PostCardProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [imageIndex, setImageIndex] = useState(0);
 
@@ -94,6 +95,18 @@ export default function PostCard({ post, showAuthor = true, editable = false }: 
             >
               수정
             </Link>
+          )}
+          {onDelete && (
+            <button
+              onClick={() => {
+                if (window.confirm(`${post.authorName} 학생의 글을 삭제하시겠습니까?`)) {
+                  onDelete(post.id);
+                }
+              }}
+              className="text-xs text-gray-300 hover:text-red-500 transition ml-1"
+            >
+              삭제
+            </button>
           )}
         </div>
       </div>

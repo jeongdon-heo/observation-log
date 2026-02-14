@@ -19,7 +19,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   }
 
   if (!user || user.role !== "student") {
-    router.push("/login");
+    router.replace("/login");
     return null;
   }
 

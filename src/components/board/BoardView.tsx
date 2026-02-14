@@ -11,9 +11,10 @@ import { EmptyState } from "@/components/ui";
 interface BoardViewProps {
   posts: Post[];
   defaultLayout?: LayoutType;
+  onDelete?: (postId: string) => void;
 }
 
-export default function BoardView({ posts, defaultLayout = "wall" }: BoardViewProps) {
+export default function BoardView({ posts, defaultLayout = "wall", onDelete }: BoardViewProps) {
   const [layout, setLayout] = useState<LayoutType>(defaultLayout);
 
   if (posts.length === 0) {
@@ -32,9 +33,9 @@ export default function BoardView({ posts, defaultLayout = "wall" }: BoardViewPr
         <LayoutToggle current={layout} onChange={setLayout} />
       </div>
 
-      {layout === "wall" && <WallLayout posts={posts} />}
-      {layout === "stream" && <StreamLayout posts={posts} />}
-      {layout === "grid" && <GridLayout posts={posts} />}
+      {layout === "wall" && <WallLayout posts={posts} onDelete={onDelete} />}
+      {layout === "stream" && <StreamLayout posts={posts} onDelete={onDelete} />}
+      {layout === "grid" && <GridLayout posts={posts} onDelete={onDelete} />}
     </div>
   );
 }

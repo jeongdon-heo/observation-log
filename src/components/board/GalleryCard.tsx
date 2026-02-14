@@ -9,9 +9,10 @@ import { WEATHER_OPTIONS } from "@/types";
 interface GalleryCardProps {
   post: Post;
   variant?: "wall" | "grid";
+  onDelete?: (postId: string) => void;
 }
 
-export default function GalleryCard({ post, variant = "wall" }: GalleryCardProps) {
+export default function GalleryCard({ post, variant = "wall", onDelete }: GalleryCardProps) {
   const [imageIndex, setImageIndex] = useState(0);
 
   const hasImages = post.photoUrls.length > 0;
@@ -79,6 +80,18 @@ export default function GalleryCard({ post, variant = "wall" }: GalleryCardProps
             <span className="text-xs text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-full">
               비공개
             </span>
+          )}
+          {onDelete && (
+            <button
+              onClick={() => {
+                if (window.confirm(`${post.authorName} 학생의 글을 삭제하시겠습니까?`)) {
+                  onDelete(post.id);
+                }
+              }}
+              className="text-xs text-gray-300 hover:text-red-500 transition ml-auto"
+            >
+              삭제
+            </button>
           )}
         </div>
       </div>

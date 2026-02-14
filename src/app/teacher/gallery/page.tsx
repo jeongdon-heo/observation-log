@@ -9,6 +9,7 @@ import {
   createGallery,
   closeGallery,
   reopenGallery,
+  deletePost,
 } from "@/lib/firestore";
 import { BoardView } from "@/components/board";
 import { Spinner, EmptyState } from "@/components/ui";
@@ -43,13 +44,8 @@ export default function TeacherGalleryPage() {
       ]);
       setGalleries(galleriesData);
       setAllPosts(postsData);
-      // 가장 최신 글이 있는 연도를 기본 선택
-      if (postsData.length > 0) {
-        const latestYear = Math.max(
-          ...postsData.map((p) => p.academicYear ?? getAcademicYear(p.createdAt))
-        );
-        setSelectedYear(latestYear);
-      }
+      // 현재 학년도를 기본 선택
+      setSelectedYear(currentYear);
     } catch (err) {
       console.error("갤러리 불러오기 실패:", err);
     } finally {
@@ -125,6 +121,19 @@ export default function TeacherGalleryPage() {
     }
   };
 
+  // 게시물 삭제
+  const handleDeletePost = async (postId: string) => {
+    try {
+      await deletePost(postId);
+      setAllPosts((prev) => prev.filter((p) => p.id !== postId));
+    } catch (err) {
+      console.error("게시물 삭제 실패:", err);
+    }
+  };
+
+  // 현재 학년도 갤러리가 열려있을 때만 삭제 가능
+  const canDelete = selectedGallery?.status === "open" && selectedGallery.classId === user?.classId;
+
   // 선택된 갤러리가 현재 학급의 것인지 확인 (이전 학급은 읽기 전용)
   const isCurrentClassGallery = !selectedGallery || selectedGallery.classId === user?.classId;
 
@@ -146,7 +155,7 @@ export default function TeacherGalleryPage() {
       <div>
         <h1 className="text-2xl font-bold">우리 반 갤러리</h1>
         <p className="text-sm text-gray-500 mt-1">
-          학생들의 관찰 일지를 한눈에 확인하세요 (비공개 포함 {filteredPosts.length}개)
+          학생들의 관찰 일지를 한눈에 확인하세요 (전체 {filteredPosts.length}개)
         </p>
       </div>
 
@@ -257,7 +266,7 @@ export default function TeacherGalleryPage() {
           }
         />
       ) : (
-        <BoardView posts={filteredPosts} defaultLayout="wall" />
+        <BoardView posts={filteredPosts} defaultLayout="wall" onDelete={canDelete ? handleDeletePost : undefined} />
       )}
     </div>
   );
