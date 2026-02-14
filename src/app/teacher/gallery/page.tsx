@@ -44,8 +44,11 @@ export default function TeacherGalleryPage() {
       ]);
       setGalleries(galleriesData);
       setAllPosts(postsData);
-      // 현재 학년도를 기본 선택
-      setSelectedYear(currentYear);
+      // 진행중인 갤러리의 학년도를 기본 선택, 없으면 현재 학년도
+      const openGallery = galleriesData.find(
+        (g) => g.status === "open" && g.classId === user?.classId
+      );
+      setSelectedYear(openGallery?.academicYear ?? currentYear);
     } catch (err) {
       console.error("갤러리 불러오기 실패:", err);
     } finally {
