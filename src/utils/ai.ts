@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI, Part } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
+function getGenAI() {
+  return new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
+}
 
 const SYSTEM_INSTRUCTION = `당신은 다정하고 호기심 많은 초등학교 선생님입니다.
 
@@ -68,7 +70,7 @@ export async function generateAIComment(params: {
 }): Promise<string> {
   const { authorName, missionTitle, content, photoUrls } = params;
 
-  const model = genAI.getGenerativeModel({
+  const model = getGenAI().getGenerativeModel({
     model: "gemini-2.0-flash",
     systemInstruction: SYSTEM_INSTRUCTION,
   });
@@ -115,7 +117,7 @@ const MISSION_DESCRIPTION_INSTRUCTION = `당신은 초등학교 자연 관찰 �
  * 미션 제목을 기반으로 AI가 미션 설명을 생성합니다.
  */
 export async function generateMissionDescription(title: string): Promise<string> {
-  const model = genAI.getGenerativeModel({
+  const model = getGenAI().getGenerativeModel({
     model: "gemini-2.0-flash",
     systemInstruction: MISSION_DESCRIPTION_INSTRUCTION,
   });
