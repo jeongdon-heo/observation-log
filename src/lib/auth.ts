@@ -3,7 +3,6 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   updateProfile,
-  updateEmail,
   updatePassword,
   getAuth,
   deleteUser as firebaseDeleteUser,

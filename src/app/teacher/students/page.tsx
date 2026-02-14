@@ -33,11 +33,6 @@ export default function StudentsPage() {
   const [creating, setCreating] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // 일괄 추가
-  const [bulkNames, setBulkNames] = useState("");
-  const [bulkCreating, setBulkCreating] = useState(false);
-  const [bulkProgress, setBulkProgress] = useState("");
-
   // 생성 결과
   const [createdAccounts, setCreatedAccounts] = useState<CreatedAccount[]>([]);
   const [error, setError] = useState("");
@@ -117,36 +112,6 @@ export default function StudentsPage() {
     } finally {
       setCreating(false);
     }
-  };
-
-  const handleCreateBulk = async () => {
-    if (!user?.classId) return;
-    const names = bulkNames
-      .split("\n")
-      .map((n) => n.trim())
-      .filter((n) => n.length > 0);
-    if (names.length === 0) return;
-
-    setBulkCreating(true);
-    setError("");
-    const results: CreatedAccount[] = [];
-
-    for (let i = 0; i < names.length; i++) {
-      setBulkProgress(`${i + 1}/${names.length} 생성 중...`);
-      try {
-        const result = await createStudentAccount(names[i], user.classId);
-        results.push({ name: names[i], ...result });
-      } catch (err) {
-        console.error(`${names[i]} 계정 생성 실패:`, err);
-        results.push({ name: names[i], email: "생성 실패", password: "-" });
-      }
-    }
-
-    setCreatedAccounts(results);
-    setBulkNames("");
-    setBulkProgress("");
-    setBulkCreating(false);
-    await fetchStudents();
   };
 
   const copyToClipboard = () => {
