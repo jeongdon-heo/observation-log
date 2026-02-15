@@ -51,59 +51,67 @@ export default function PostForm({ onSubmit, loading = false, loadingMessage, in
   const [interimText, setInterimText] = useState("");
   const [speechSupported, setSpeechSupported] = useState(false);
   const recognitionRef = useRef<any>(null);
-  const contentRef = useRef(content);
-  contentRef.current = content;
+  const lastProcessedIndex = useRef(0);
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       setSpeechSupported(true);
-      const recognition = new SpeechRecognition();
-      recognition.lang = "ko-KR";
-      recognition.continuous = true;
-      recognition.interimResults = true;
-
-      recognition.onresult = (event: any) => {
-        let finalText = "";
-        let interim = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalText += transcript;
-          } else {
-            interim += transcript;
-          }
-        }
-        if (finalText) {
-          setContent((prev) => prev + finalText);
-          setInterimText("");
-        } else {
-          setInterimText(interim);
-        }
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-        setInterimText("");
-      };
-
-      recognition.onerror = () => {
-        setIsListening(false);
-        setInterimText("");
-      };
-
-      recognitionRef.current = recognition;
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleListening = useCallback(() => {
-    if (!recognitionRef.current) return;
-    if (isListening) {
+    if (isListening && recognitionRef.current) {
       recognitionRef.current.stop();
-    } else {
-      recognitionRef.current.start();
-      setIsListening(true);
+      recognitionRef.current = null;
+      return;
     }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "ko-KR";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    lastProcessedIndex.current = 0;
+
+    recognition.onresult = (event: any) => {
+      let newFinal = "";
+      let interim = "";
+
+      for (let i = 0; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          if (i >= lastProcessedIndex.current) {
+            newFinal += event.results[i][0].transcript;
+            lastProcessedIndex.current = i + 1;
+          }
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+
+      if (newFinal) {
+        setContent((prev) => prev + newFinal);
+      }
+      setInterimText(interim);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      setInterimText("");
+      recognitionRef.current = null;
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+      setInterimText("");
+      recognitionRef.current = null;
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
   }, [isListening]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
