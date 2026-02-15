@@ -1,6 +1,14 @@
 "use client";
 
-import { useState } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
+
+import { useState, useRef, useEffect, useCallback } from "react";
 import type { WeatherType } from "@/types";
 import { WEATHER_OPTIONS } from "@/types";
 import Button from "@/components/ui/Button";
@@ -39,6 +47,64 @@ export default function PostForm({ onSubmit, loading = false, loadingMessage, in
     initialData?.observedAt ?? new Date().toISOString().split("T")[0]
   );
   const [existingPhotos] = useState<string[]>(initialData?.photoUrls ?? []);
+  const [isListening, setIsListening] = useState(false);
+  const [interimText, setInterimText] = useState("");
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const contentRef = useRef(content);
+  contentRef.current = content;
+
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setSpeechSupported(true);
+      const recognition = new SpeechRecognition();
+      recognition.lang = "ko-KR";
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event: any) => {
+        let finalText = "";
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalText += transcript;
+          } else {
+            interim += transcript;
+          }
+        }
+        if (finalText) {
+          setContent((prev) => prev + finalText);
+          setInterimText("");
+        } else {
+          setInterimText(interim);
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        setInterimText("");
+      };
+
+      recognition.onerror = () => {
+        setIsListening(false);
+        setInterimText("");
+      };
+
+      recognitionRef.current = recognition;
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleListening = useCallback(() => {
+    if (!recognitionRef.current) return;
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  }, [isListening]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
@@ -68,16 +134,41 @@ export default function PostForm({ onSubmit, loading = false, loadingMessage, in
     <form onSubmit={handleSubmit} className="space-y-5">
       {/* 관찰 내용 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">관찰 내용</label>
-        <textarea
-          placeholder="무엇을 관찰했나요? 자세히 적어보세요!"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          required
-          rows={6}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
-        />
-        <p className="text-xs text-gray-400 mt-1">{content.length}자</p>
+        <div className="flex items-center justify-between mb-1">
+          <label className="block text-sm font-medium text-gray-700">관찰 내용</label>
+          {speechSupported && (
+            <button
+              type="button"
+              onClick={toggleListening}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                isListening
+                  ? "bg-red-100 text-red-600 animate-pulse"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {isListening ? "🔴 듣는 중..." : "🎤 음성 입력"}
+            </button>
+          )}
+        </div>
+        <div className="relative">
+          <textarea
+            placeholder="무엇을 관찰했나요? 자세히 적어보세요!"
+            value={content + interimText}
+            onChange={(e) => {
+              setContent(e.target.value);
+              setInterimText("");
+            }}
+            required
+            rows={6}
+            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 resize-none ${
+              isListening ? "border-red-300 bg-red-50/30" : "border-gray-300"
+            }`}
+          />
+        </div>
+        <p className="text-xs text-gray-400 mt-1">
+          {content.length}자
+          {interimText && <span className="text-red-400 ml-2">음성 인식 중...</span>}
+        </p>
       </div>
 
       {/* 사진 첨부 */}
