@@ -93,13 +93,9 @@ export default function WritePostPage() {
         if (res.ok && result.content) {
           setAiComment(result.content);
           return; // 모달에서 확인 누르면 이동
-        } else {
-          console.error("AI 댓글 API 오류:", result);
-          alert(`AI 댓글 생성 실패: ${result.detail || result.error || "알 수 없는 오류"}\n(일지는 정상 저장되었습니다)`);
         }
       } catch (err) {
         console.error("AI 댓글 생성 실패 (일지는 저장됨):", err);
-        alert("AI 댓글 생성 중 네트워크 오류가 발생했습니다.\n(일지는 정상 저장되었습니다)");
       }
 
       router.push("/student");
