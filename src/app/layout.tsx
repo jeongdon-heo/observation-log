@@ -25,10 +25,26 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
+      <head>
+        <meta name="theme-color" content="#22c55e" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+      </head>
       <body className={`${geistSans.variable} antialiased bg-gray-50 min-h-screen`}>
         <AuthProvider>
           {children}
         </AuthProvider>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ("serviceWorker" in navigator) {
+                window.addEventListener("load", () => {
+                  navigator.serviceWorker.register("/sw.js");
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
