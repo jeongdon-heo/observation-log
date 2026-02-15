@@ -8,6 +8,8 @@ import { useAuth } from "@/context/AuthContext";
 import { createPost, getMission, getAcademicYear } from "@/lib/firestore";
 import { uploadMultipleImages } from "@/lib/storage";
 import { PostForm } from "@/components/observation";
+import { format } from "date-fns";
+import { ko } from "date-fns/locale";
 import type { Mission, WeatherType } from "@/types";
 
 export default function WritePostPage() {
@@ -24,6 +26,14 @@ export default function WritePostPage() {
   useEffect(() => {
     getMission(missionId).then(setMission);
   }, [missionId]);
+
+  // 미션 기간 체크
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const isWithinPeriod = mission
+    ? today >= new Date(mission.startDate.getFullYear(), mission.startDate.getMonth(), mission.startDate.getDate()) &&
+      today <= new Date(mission.endDate.getFullYear(), mission.endDate.getMonth(), mission.endDate.getDate())
+    : true;
 
   const handleSubmit = async (data: {
     content: string;
@@ -99,7 +109,20 @@ export default function WritePostPage() {
         )}
       </div>
 
-      <PostForm onSubmit={handleSubmit} loading={loading} loadingMessage={loadingMessage} />
+      {mission && !isWithinPeriod ? (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-6 text-center space-y-2">
+          <p className="text-red-600 font-medium">
+            {today < new Date(mission.startDate.getFullYear(), mission.startDate.getMonth(), mission.startDate.getDate())
+              ? "아직 미션 기간이 시작되지 않았어요."
+              : "미션 기간이 끝났어요."}
+          </p>
+          <p className="text-sm text-gray-500">
+            작성 가능 기간: {format(mission.startDate, "yyyy년 M월 d일", { locale: ko })} ~ {format(mission.endDate, "yyyy년 M월 d일", { locale: ko })}
+          </p>
+        </div>
+      ) : (
+        <PostForm onSubmit={handleSubmit} loading={loading} loadingMessage={loadingMessage} />
+      )}
 
       {/* AI 댓글 모달 */}
       {aiComment && (
