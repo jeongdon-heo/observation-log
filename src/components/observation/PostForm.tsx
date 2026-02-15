@@ -51,7 +51,7 @@ export default function PostForm({ onSubmit, loading = false, loadingMessage, in
   const [interimText, setInterimText] = useState("");
   const [speechSupported, setSpeechSupported] = useState(false);
   const recognitionRef = useRef<any>(null);
-  const lastProcessedIndex = useRef(0);
+  const baseContentRef = useRef("");
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -70,30 +70,30 @@ export default function PostForm({ onSubmit, loading = false, loadingMessage, in
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
 
+    // 음성 시작 시점의 텍스트를 기준점으로 저장
+    baseContentRef.current = content;
+
     const recognition = new SpeechRecognition();
     recognition.lang = "ko-KR";
     recognition.continuous = true;
     recognition.interimResults = true;
-    lastProcessedIndex.current = 0;
 
     recognition.onresult = (event: any) => {
-      let newFinal = "";
+      // 매번 전체 결과를 처음부터 조합
+      let allFinal = "";
       let interim = "";
 
       for (let i = 0; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          if (i >= lastProcessedIndex.current) {
-            newFinal += event.results[i][0].transcript;
-            lastProcessedIndex.current = i + 1;
-          }
+          allFinal += transcript;
         } else {
-          interim += event.results[i][0].transcript;
+          interim += transcript;
         }
       }
 
-      if (newFinal) {
-        setContent((prev) => prev + newFinal);
-      }
+      // 기준점 + 전체 확정 텍스트로 덮어쓰기 (중복 불가능)
+      setContent(baseContentRef.current + allFinal);
       setInterimText(interim);
     };
 
@@ -112,7 +112,7 @@ export default function PostForm({ onSubmit, loading = false, loadingMessage, in
     recognitionRef.current = recognition;
     recognition.start();
     setIsListening(true);
-  }, [isListening]);
+  }, [isListening, content]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
