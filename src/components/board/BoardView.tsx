@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Post, LayoutType } from "@/types";
 import WallLayout from "./WallLayout";
 import StreamLayout from "./StreamLayout";
@@ -16,6 +16,16 @@ interface BoardViewProps {
 
 export default function BoardView({ posts, defaultLayout = "wall", onDelete }: BoardViewProps) {
   const [layout, setLayout] = useState<LayoutType>(defaultLayout);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  const activeLayout = isMobile ? "stream" : layout;
 
   if (posts.length === 0) {
     return (
@@ -29,13 +39,15 @@ export default function BoardView({ posts, defaultLayout = "wall", onDelete }: B
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <LayoutToggle current={layout} onChange={setLayout} />
-      </div>
+      {!isMobile && (
+        <div className="flex justify-end">
+          <LayoutToggle current={layout} onChange={setLayout} />
+        </div>
+      )}
 
-      {layout === "wall" && <WallLayout posts={posts} onDelete={onDelete} />}
-      {layout === "stream" && <StreamLayout posts={posts} onDelete={onDelete} />}
-      {layout === "grid" && <GridLayout posts={posts} onDelete={onDelete} />}
+      {activeLayout === "wall" && <WallLayout posts={posts} onDelete={onDelete} />}
+      {activeLayout === "stream" && <StreamLayout posts={posts} onDelete={onDelete} />}
+      {activeLayout === "grid" && <GridLayout posts={posts} onDelete={onDelete} />}
     </div>
   );
 }
