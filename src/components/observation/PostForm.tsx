@@ -48,76 +48,49 @@ export default function PostForm({ onSubmit, loading = false, loadingMessage, in
   );
   const [existingPhotos] = useState<string[]>(initialData?.photoUrls ?? []);
   const [isListening, setIsListening] = useState(false);
-  const [interimText, setInterimText] = useState("");
   const [speechSupported, setSpeechSupported] = useState(false);
   const recognitionRef = useRef<any>(null);
-  const wantListeningRef = useRef(false);
-  const contentRef = useRef(content);
-  contentRef.current = content;
 
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SR) setSpeechSupported(true);
   }, []);
 
-  const startRecognition = useCallback(() => {
+  const toggleListening = useCallback(() => {
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.abort();
+      recognitionRef.current = null;
+      setIsListening(false);
+      return;
+    }
+
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
 
     const recognition = new SR();
     recognition.lang = "ko-KR";
     recognition.continuous = false;
-    recognition.interimResults = true;
+    recognition.interimResults = false;
 
     recognition.onresult = (event: any) => {
-      const result = event.results[0];
-      if (result.isFinal) {
-        setContent((prev) => prev + result[0].transcript + " ");
-        setInterimText("");
-      } else {
-        setInterimText(result[0].transcript);
-      }
+      const transcript = event.results[0][0].transcript;
+      setContent((prev) => (prev ? prev + " " : "") + transcript);
     };
 
     recognition.onend = () => {
       recognitionRef.current = null;
-      if (wantListeningRef.current) {
-        // 사용자가 아직 듣기 원하면 자동 재시작
-        startRecognition();
-      } else {
-        setIsListening(false);
-        setInterimText("");
-      }
+      setIsListening(false);
     };
 
-    recognition.onerror = (e: any) => {
+    recognition.onerror = () => {
       recognitionRef.current = null;
-      // no-speech는 무시하고 재시작
-      if (e.error === "no-speech" && wantListeningRef.current) {
-        startRecognition();
-        return;
-      }
-      wantListeningRef.current = false;
       setIsListening(false);
-      setInterimText("");
     };
 
     recognitionRef.current = recognition;
     recognition.start();
-  }, []);
-
-  const toggleListening = useCallback(() => {
-    if (isListening) {
-      wantListeningRef.current = false;
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    } else {
-      wantListeningRef.current = true;
-      setIsListening(true);
-      startRecognition();
-    }
-  }, [isListening, startRecognition]);
+    setIsListening(true);
+  }, [isListening]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
@@ -159,29 +132,21 @@ export default function PostForm({ onSubmit, loading = false, loadingMessage, in
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              {isListening ? "🔴 듣는 중..." : "🎤 음성 입력"}
+              {isListening ? "🔴 듣는 중... (멈추려면 탭)" : "🎤 음성 입력"}
             </button>
           )}
         </div>
-        <div className="relative">
-          <textarea
-            placeholder="무엇을 관찰했나요? 자세히 적어보세요!"
-            value={content + interimText}
-            onChange={(e) => {
-              setContent(e.target.value);
-              setInterimText("");
-            }}
-            required
-            rows={6}
-            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 resize-none ${
-              isListening ? "border-red-300 bg-red-50/30" : "border-gray-300"
-            }`}
-          />
-        </div>
-        <p className="text-xs text-gray-400 mt-1">
-          {content.length}자
-          {interimText && <span className="text-red-400 ml-2">음성 인식 중...</span>}
-        </p>
+        <textarea
+          placeholder="무엇을 관찰했나요? 자세히 적어보세요!"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          required
+          rows={6}
+          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 resize-none ${
+            isListening ? "border-red-300 bg-red-50/30" : "border-gray-300"
+          }`}
+        />
+        <p className="text-xs text-gray-400 mt-1">{content.length}자</p>
       </div>
 
       {/* 사진 첨부 */}
