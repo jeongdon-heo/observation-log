@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Timestamp } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
-import { createPost, getMission, getAcademicYear, getGalleriesByClassIds } from "@/lib/firestore";
+import { createPost, getMission, getAcademicYear } from "@/lib/firestore";
 import { uploadMultipleImages } from "@/lib/storage";
 import { PostForm } from "@/components/observation";
 import type { Mission, WeatherType } from "@/types";
@@ -20,32 +20,10 @@ export default function WritePostPage() {
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [aiComment, setAiComment] = useState<string | null>(null);
-  const [postAcademicYear, setPostAcademicYear] = useState<number>(getAcademicYear());
 
   useEffect(() => {
     getMission(missionId).then(setMission);
   }, [missionId]);
-
-  // 학생의 모든 classId (현재 + 이전)
-  const allClassIds = user?.classId
-    ? [user.classId, ...(user.previousClassIds || [])]
-    : [];
-
-  // 현재 학년도 갤러리가 마감되었으면 다음 학년도로 설정
-  useEffect(() => {
-    async function checkGallery() {
-      if (allClassIds.length === 0) return;
-      // 학생의 모든 classId에서 갤러리 검색 (교사가 classId를 변경했을 수 있음)
-      const galleries = await getGalleriesByClassIds(allClassIds);
-      const currentYear = getAcademicYear();
-      const gallery = galleries.find((g) => g.academicYear === currentYear);
-      if (gallery?.status === "closed") {
-        setPostAcademicYear(currentYear + 1);
-      }
-    }
-    checkGallery();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.classId]);
 
   const handleSubmit = async (data: {
     content: string;
@@ -71,7 +49,7 @@ export default function WritePostPage() {
         content: data.content,
         weather: data.weather,
         isPublic: data.isPublic,
-        academicYear: postAcademicYear,
+        academicYear: getAcademicYear(),
         observedAt: Timestamp.fromDate(new Date(data.observedAt)),
       });
 
@@ -120,12 +98,6 @@ export default function WritePostPage() {
           </p>
         )}
       </div>
-
-      {postAcademicYear !== getAcademicYear() && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-700">
-          {getAcademicYear()}학년도 갤러리가 마감되어 <strong>{postAcademicYear}학년도</strong>에 기록됩니다.
-        </div>
-      )}
 
       <PostForm onSubmit={handleSubmit} loading={loading} loadingMessage={loadingMessage} />
 
