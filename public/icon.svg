@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#22c55e"/>
+  <circle cx="220" cy="220" r="100" fill="none" stroke="white" stroke-width="32"/>
+  <line x1="290" y1="290" x2="400" y2="400" stroke="white" stroke-width="32" stroke-linecap="round"/>
+  <circle cx="220" cy="220" r="50" fill="none" stroke="white" stroke-width="16" opacity="0.5"/>
+  <text x="256" y="480" font-size="48" font-family="sans-serif" fill="white" text-anchor="middle" font-weight="bold">세상 돋보기</text>
+</svg>
