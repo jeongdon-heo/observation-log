@@ -51,68 +51,73 @@ export default function PostForm({ onSubmit, loading = false, loadingMessage, in
   const [interimText, setInterimText] = useState("");
   const [speechSupported, setSpeechSupported] = useState(false);
   const recognitionRef = useRef<any>(null);
-  const baseContentRef = useRef("");
+  const wantListeningRef = useRef(false);
+  const contentRef = useRef(content);
+  contentRef.current = content;
 
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      setSpeechSupported(true);
-    }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SR) setSpeechSupported(true);
   }, []);
 
-  const toggleListening = useCallback(() => {
-    if (isListening && recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-      return;
-    }
+  const startRecognition = useCallback(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    // 음성 시작 시점의 텍스트를 기준점으로 저장
-    baseContentRef.current = content;
-
-    const recognition = new SpeechRecognition();
+    const recognition = new SR();
     recognition.lang = "ko-KR";
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.interimResults = true;
 
     recognition.onresult = (event: any) => {
-      // 매번 전체 결과를 처음부터 조합
-      let allFinal = "";
-      let interim = "";
-
-      for (let i = 0; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          allFinal += transcript;
-        } else {
-          interim += transcript;
-        }
+      const result = event.results[0];
+      if (result.isFinal) {
+        setContent((prev) => prev + result[0].transcript + " ");
+        setInterimText("");
+      } else {
+        setInterimText(result[0].transcript);
       }
-
-      // 기준점 + 전체 확정 텍스트로 덮어쓰기 (중복 불가능)
-      setContent(baseContentRef.current + allFinal);
-      setInterimText(interim);
     };
 
     recognition.onend = () => {
-      setIsListening(false);
-      setInterimText("");
       recognitionRef.current = null;
+      if (wantListeningRef.current) {
+        // 사용자가 아직 듣기 원하면 자동 재시작
+        startRecognition();
+      } else {
+        setIsListening(false);
+        setInterimText("");
+      }
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (e: any) => {
+      recognitionRef.current = null;
+      // no-speech는 무시하고 재시작
+      if (e.error === "no-speech" && wantListeningRef.current) {
+        startRecognition();
+        return;
+      }
+      wantListeningRef.current = false;
       setIsListening(false);
       setInterimText("");
-      recognitionRef.current = null;
     };
 
     recognitionRef.current = recognition;
     recognition.start();
-    setIsListening(true);
-  }, [isListening, content]);
+  }, []);
+
+  const toggleListening = useCallback(() => {
+    if (isListening) {
+      wantListeningRef.current = false;
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    } else {
+      wantListeningRef.current = true;
+      setIsListening(true);
+      startRecognition();
+    }
+  }, [isListening, startRecognition]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
